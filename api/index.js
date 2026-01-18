@@ -1,68 +1,59 @@
-// Файл: api/index.js
-// Родной код для Vercel. Работает вечно.
+// api/index.js
+export default async function handler(req, res) {
+  // 1. Настройка заголовков (CORS) — чтобы браузер не ругался
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-export const config = {
-  runtime: 'edge', // Включает максимальную скорость (Edge Functions)
-};
-
-export default async function handler(req) {
-  // 1. Настройка CORS (чтобы сайт не ругался)
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json',
-  };
-
+  // Если браузер просто проверяет доступ (OPTIONS)
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers });
+    return res.status(200).end();
   }
 
-  try {
-    // 2. Твой ключ Groq
-    const GROQ_KEY = "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";
+  // 2. Твой ключ Groq
+  const GROQ_KEY = "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";
 
-    // Читаем данные от пользователя
-    const body = await req.json().catch(() => ({}));
-    
-    // Если просто зашли по ссылке
-    if (!body.messages) {
-      return new Response(JSON.stringify({ status: "BotHost API (Node.js) is Active" }), { status: 200, headers });
+  try {
+    // Читаем данные
+    const { messages, model, temperature } = req.body || {};
+
+    // Если данных нет, вернем статус
+    if (!messages) {
+      return res.status(200).json({ status: "BotHost API is Online 🚀" });
     }
 
-    // Маппинг моделей
+    // Выбираем модель
     const modelMap = {
-      "gpt-4o": "llama-3.1-70b-versatile",
+      "gpt-4o": "llama-3.1-70b-versatile", 
       "llama-3.1-405b": "llama-3.1-405b-reasoning",
       "llama-3.1-70b": "llama-3.1-70b-versatile",
       "mixtral": "mixtral-8x7b-32768"
     };
+    
+    const targetModel = modelMap[model] || "llama-3.1-70b-versatile";
 
-    const requestedModel = body.model || "llama-3.1-70b";
-    const targetModel = modelMap[requestedModel] || "llama-3.1-70b-versatile";
-
-    // 3. Запрос к Groq
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    // 3. Отправляем запрос в Groq
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${GROQ_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        messages: body.messages,
+        messages: messages,
         model: targetModel,
-        temperature: body.temperature || 0.7,
-        max_tokens: body.max_tokens || 4096,
+        temperature: temperature || 0.7,
+        max_tokens: 4096,
         stream: false
       }),
     });
 
-    const data = await response.json();
+    const data = await groqResponse.json();
 
-    // Отдаем ответ пользователю
-    return new Response(JSON.stringify(data), { status: 200, headers });
+    // Возвращаем ответ на сайт
+    return res.status(200).json(data);
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
+    return res.status(500).json({ error: error.message });
   }
 }
