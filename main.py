@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Загружаем ключ из .env файла
 load_dotenv()
-API_KEY = os.getenv("GROQ_API_KEY")
+API_KEY = os.getenv("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")
 
 if not API_KEY:
     raise ValueError("API ключ не найден! Проверь файл .env")
