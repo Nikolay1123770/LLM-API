@@ -5,90 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BotHost AI</title>
     <style>
-        body { background: #0f0f12; color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        #chat { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .msg { padding: 12px 18px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 16px; }
-        .user { background: #0070f3; align-self: flex-end; color: white; }
-        .ai { background: #1e1e24; align-self: flex-start; border: 1px solid #333; color: #e1e1e1; }
-        .error { background: #ff3333; color: white; align-self: center; }
-        #input-area { display: flex; padding: 20px; background: #16161a; border-top: 1px solid #333; }
-        input { flex: 1; padding: 15px; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; font-size: 16px; outline: none; }
-        input:focus { border-color: #0070f3; }
-        button { padding: 15px 30px; background: #0070f3; border: none; cursor: pointer; font-weight: bold; margin-left: 10px; border-radius: 8px; color: white; font-size: 16px; }
-        button:disabled { background: #333; cursor: not-allowed; }
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #chat { flex: 1; padding: 20px; overflow-y: auto; }
+        .msg { margin: 10px 0; padding: 10px 15px; border-radius: 10px; max-width: 80%; }
+        .user { background: #007bff; align-self: flex-end; margin-left: auto; }
+        .ai { background: #222; border: 1px solid #333; }
+        #input-area { display: flex; padding: 20px; background: #111; }
+        input { flex: 1; padding: 15px; background: #333; border: none; color: #fff; border-radius: 5px; }
+        button { padding: 15px 30px; background: #00ff88; border: none; cursor: pointer; margin-left: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
-
-<div id="chat">
-    <div class="msg ai">Привет! Я ИИ-ассистент BotHost. Работаю на базе Llama 3.1. Чем помочь?</div>
-</div>
-
+<div id="chat"></div>
 <div id="input-area">
-    <input type="text" id="msg" placeholder="Спроси что-нибудь..." autocomplete="off">
-    <button id="sendBtn" onclick="send()">Send</button>
+    <input type="text" id="msg" placeholder="Сообщение...">
+    <button onclick="send()">Send</button>
 </div>
-
 <script>
-    const input = document.getElementById('msg');
-    
-    // Отправка по Enter
-    input.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") send();
-    });
-
     async function send() {
-        const text = input.value;
-        if (!text) return;
-
-        addMsg(text, 'user');
-        input.value = '';
-        input.disabled = true;
-        document.getElementById('sendBtn').disabled = true;
+        const inp = document.getElementById('msg');
+        const txt = inp.value;
+        if(!txt) return;
+        
+        document.getElementById('chat').innerHTML += `<div class="msg user">${txt}</div>`;
+        inp.value = '';
 
         try {
-            // ВАЖНО: теперь запрос идет на /api/index
-            const response = await fetch('/api/index', {
+            // Запрос на /api/index
+            const res = await fetch('/api/index', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    model: "gpt-4o", // Будет использована Llama 70B
-                    messages: [{ role: "user", content: text }]
+                    messages: [{role: "user", content: txt}],
+                    model: "llama-3.1-70b"
                 })
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            if (data.choices && data.choices[0]) {
-                addMsg(data.choices[0].message.content, 'ai');
-            } else if (data.error) {
-                addMsg("Ошибка API: " + data.error.message, 'error');
-            } else {
-                addMsg("Пустой ответ от сервера", 'error');
-            }
-
-        } catch (e) {
-            console.error(e);
-            addMsg("Ошибка соединения: " + e.message, 'error');
-        } finally {
-            input.disabled = false;
-            document.getElementById('sendBtn').disabled = false;
-            input.focus();
+            const data = await res.json();
+            const reply = data.choices?.[0]?.message?.content || JSON.stringify(data);
+            document.getElementById('chat').innerHTML += `<div class="msg ai">${reply}</div>`;
+        } catch(e) {
+            document.getElementById('chat').innerHTML += `<div class="msg ai" style="color:red">Ошибка: ${e.message}</div>`;
         }
     }
-
-    function addMsg(text, type) {
-        const div = document.createElement('div');
-        div.className = 'msg ' + type;
-        div.innerText = text;
-        document.getElementById('chat').appendChild(div);
-        document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
-    }
 </script>
-
 </body>
 </html>
